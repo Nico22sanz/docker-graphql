@@ -3,28 +3,25 @@ name: Docker Image CI
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - name: Git Semantic Version
-      uses: PaulHatch/semantic-version@v4.0.3
-      with:
-        major_pattern: "major:"
-        menor_pattern: "feat:"
-        format: "${major}.${minor}.${patch}-prerelease${increment}" 
-      id: version
-      
     - name: Checkout code 
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+
+    - name: Git Semantic Version
+      uses: PaulHatch/semantic-version@v4.0.3
+      id: version
+      with:
+        major_pattern: "major:"
+        minor_pattern: "feat:"
+        format: "${major}.${minor}.${patch}-prerelease${increment}"
+
     - name: Docker login
       env:
         DOCKER_USER: ${{ secrets.DOCKER_USER }}
@@ -32,18 +29,18 @@ jobs:
         NEW_VERSION: ${{ steps.version.outputs.version }}
       run: |
         echo "Iniciando login"
-        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
         echo "New version: $NEW_VERSION"
         echo "Fin de login"
-        
+
     - name: Build docker image
+      env:
+        NEW_VERSION: ${{ steps.version.outputs.version }}
       run: |
-        docker build -t nic22/docker-graphql:0.0.2 .
-        
+        docker build -t nic22/docker-graphql:$NEW_VERSION .
+
     - name: Push docker image
+      env:
+        NEW_VERSION: ${{ steps.version.outputs.version }}
       run: |
-        docker push nic22/docker-graphql:0.0.2
-        
-#    - name: Build the Docker image
-#      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
-  
+        docker push nic22/docker-graphql:$NEW_VERSION
